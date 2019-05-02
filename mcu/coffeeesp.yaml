@@ -1,0 +1,201 @@
+esphome:
+  name: coffeeesp
+  platform: ESP8266
+  board: esp12e
+  includes:
+    - RC522.h
+    - busyState.h
+    - waterLED.h
+  libraries:
+    - "SPI"
+    - "MFRC522"
+
+custom_component:
+  - lambda: |-
+      auto component = new RfidSensorsComponent();
+      return { component };
+    id: rfid_component
+
+wifi:
+  ssid: "NES@FIT WLAN"
+  password: "kolize311"
+
+# Enable logging
+logger:
+
+# Enable Home Assistant API
+#api:
+
+ota:
+
+mqtt:
+  broker: mqtt.nesad.fit.vutbr.cz
+  username: nesAtFit
+  password: kolize311
+  on_message:
+    - topic: coffee/cmd
+      payload: "{\"MakeCoffee\":1}"
+      qos: 0
+      then:
+        - if:
+            condition:
+              and:
+                # Should return either true or false
+                - binary_sensor.is_off: coffee_machine_WATER_LED #EMPTY WATER
+                - binary_sensor.is_on: coffee_machine_READY_LED #MACHINE IS BUSY
+            then:
+              - switch.turn_on: coffee_machine_MAKE_COFFEE
+    - topic: coffee/cmd
+      payload: "{\"TurnOn\":1}"
+      qos: 0
+      then:
+        - switch.turn_on: coffee_machine_POWER_SWITCH
+        - mqtt.publish_json:
+            topic: coffee/stat
+            payload: |-
+              root["power_on"] = 1;
+            retain: True
+
+    - topic: coffee/cmd
+      payload: "{\"TurnOff\":1}"
+      qos: 0
+      then:
+        - switch.turn_on: coffee_machine_POWER_SWITCH
+        - mqtt.publish_json:
+            topic: coffee/stat
+            payload: |-
+              root["power_on"] = 0;
+            retain: True
+    - topic: coffee/cmd
+      payload: "{\"Clean\":1}"
+      qos: 0
+      then:
+        - if:
+            condition:
+              and:
+                # Should return either true or false
+                - binary_sensor.is_off: coffee_machine_WATER_LED #EMPTY WATER
+                - binary_sensor.is_on: coffee_machine_READY_LED #MACHINE IS BUSY
+            then:
+              - switch.turn_on: coffee_machine_CLEAN_MACHINE ## TODO if machine is not busy (no err)
+switch:
+  - platform: gpio
+    name: "coffee machine ON\/OFF PIN"
+    internal: true
+    id: coffee_machine_POWER_PIN
+    pin: 16
+    restore_mode: ALWAYS_ON
+
+  - platform: gpio
+    name: "coffee machine COFFEE PIN"
+    internal: true
+    id: coffee_machine_COFFEE_PIN
+    pin: 5
+    restore_mode: ALWAYS_ON
+
+  - platform: gpio
+    name: "coffee machine CLEAN PIN"
+    internal: true
+    id: coffee_machine_CLEAN_PIN
+    pin: 4
+    restore_mode: ALWAYS_ON
+
+  - platform: template
+    name: "coffee machine Turn ON\/OFF machine"
+    id: coffee_machine_POWER_SWITCH
+    turn_on_action:
+    - switch.turn_off: coffee_machine_POWER_PIN
+    - delay: 0.9s
+    - switch.turn_on: coffee_machine_POWER_PIN
+
+  - platform: template
+    name: "coffee machine Make coffee"
+    id: coffee_machine_MAKE_COFFEE
+    turn_on_action:
+    - mqtt.publish_json:
+        topic: coffee/stat
+        payload: |-
+          root["Action"] = "MakingCoffee";
+        retain: True
+    - delay: 0.2s
+    - switch.turn_off: coffee_machine_COFFEE_PIN
+    - delay: 0.9s
+    - switch.turn_on: coffee_machine_COFFEE_PIN
+
+  - platform: template
+    name: "coffee machine Star cleaning"
+    id: coffee_machine_CLEAN_MACHINE
+    turn_on_action:
+    - mqtt.publish_json:
+        topic: coffee/stat
+        payload: |-
+          root["Action"] = "Cleaning";
+        retain: True
+    - switch.turn_off: coffee_machine_CLEAN_PIN
+    - delay: 0.9s
+    - switch.turn_on: coffee_machine_CLEAN_PIN
+
+binary_sensor:
+  - platform: custom
+    lambda: |-
+      auto busyState = new BusyState();
+      App.register_component(busyState);
+      return {busyState};
+    binary_sensors:
+      name: "coffee machine READY LED"
+      id: coffee_machine_READY_LED
+      on_press:
+        then:
+          - mqtt.publish_json:
+              topic: coffee/stat
+              payload: |-
+                root["Ready"] = false;
+              retain: True
+      on_release:
+        then:
+          - mqtt.publish_json:
+              topic: coffee/stat
+              payload: |-
+                root["Ready"] = true;
+              retain: True
+  - platform: custom
+    lambda: |-
+      auto waterLED = new WaterLED();
+      App.register_component(waterLED);
+      return {waterLED};
+    binary_sensors:
+      name: "coffee machine WATER LED"
+      id: coffee_machine_WATER_LED
+      on_press:
+        then:
+          - mqtt.publish_json:
+              topic: coffee/stat
+              payload: |-
+                root["EmptyWater"] = true;
+              retain: True
+      on_release:
+        then:
+          - mqtt.publish_json:
+              topic: coffee/stat
+              payload: |-
+                root["EmptyWater"] = false;
+              retain: True
+sensor:
+  - platform: custom
+    id: RC522
+    lambda: |-
+      auto rfid_sensor = new RfidSensorsComponent();
+      App.register_component(rfid_sensor);
+      return { rfid_sensor->state };
+    sensors:
+      name: "coffee machine RFID SENSOR"
+      id: TAG
+      on_value:
+        then:
+          - mqtt.publish_json:
+              topic: coffee/stat
+              payload: |-
+                root["ReadCard"] = id(TAG).state;
+   
+status_led:
+  pin: 2        
