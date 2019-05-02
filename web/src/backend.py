@@ -24,7 +24,7 @@ from os import curdir, sep
 server = os.environ.get('mqtt_host'), #"192.168.2.1"    # FILL IN YOUR CREDENTIALS
 port = os.environ.get('mqtt_port')
 mqtt_username = os.environ.get('mqtt_username') #""
-mqtt_password = "os.environ.get('mqtt_password')"
+mqtt_password = os.environ.get('mqtt_password')
 
 mydb = mysql.connector.connect(
   host=os.environ.get('mysql_host'),
