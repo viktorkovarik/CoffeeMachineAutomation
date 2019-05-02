@@ -4,7 +4,7 @@ using namespace esphome;
 class WaterLED : public PollingComponent, public binary_sensor::BinarySensor {
  public:
     // constructor
-    WaterLED() : PollingComponent(1500) {}
+    WaterLED() : PollingComponent(300) {}
     int cnt_filtering_val = 10;
     int filtering_indexWATER = cnt_filtering_val;
     int oncePrintWaterErr = 0;

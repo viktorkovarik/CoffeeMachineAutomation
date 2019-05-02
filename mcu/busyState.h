@@ -4,7 +4,7 @@ using namespace esphome;
 class BusyState : public PollingComponent, public binary_sensor::BinarySensor {
  public:
     // constructor
-    BusyState() : PollingComponent(5000) {}
+    BusyState() : PollingComponent(300) {}
 
     int indexGreenLED = 0;
     int indexBusyState = 0;
