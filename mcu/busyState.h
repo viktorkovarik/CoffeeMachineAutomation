@@ -45,7 +45,7 @@ class BusyState : public PollingComponent, public binary_sensor::BinarySensor {
     void setup() override {
         // This will be called by App.setup()
         pinMode(A0, INPUT);
-        //publish_state(1);
+        publish_state(1);
     }
     void update() override {
         // This will be called every "update_interval" milliseconds.
@@ -56,6 +56,6 @@ class BusyState : public PollingComponent, public binary_sensor::BinarySensor {
 
         int tmp = filterbusyState(&diodeLight);
 
-        publish_state(tmp);
+        publish_state(!tmp);
     }
 };

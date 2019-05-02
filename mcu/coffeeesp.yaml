@@ -149,14 +149,14 @@ binary_sensor:
           - mqtt.publish_json:
               topic: coffee/stat
               payload: |-
-                root["Ready"] = false;
+                root["Ready"] = true;
               retain: True
       on_release:
         then:
           - mqtt.publish_json:
               topic: coffee/stat
               payload: |-
-                root["Ready"] = true;
+                root["Ready"] = false;
               retain: True
   - platform: custom
     lambda: |-
