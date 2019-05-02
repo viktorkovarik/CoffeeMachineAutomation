@@ -33,24 +33,8 @@ mydb = mysql.connector.connect(
   database="coffeeesp"
 )
 
-#HTTP PORT for API
-#port=8080
-
-
 global mycursor
 mycursor = mydb.cursor()
-'''sql = "INSERT INTO Ready (val) VALUES ('2')"
-mycursor.execute(sql)
-
-mycursor.execute("SELECT * FROM ready")
-
-
-myresult = mycursor.fetchall()
-
-for x in myresult:
-  print(x)
-
-'''
 
 def mysql_query(sql):
     mycursor.execute(sql)
