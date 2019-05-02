@@ -11,6 +11,7 @@ import math
 import cmath
 import mysql.connector
 import urllib
+import os.environ
 
 import threading
 
@@ -20,23 +21,16 @@ import cgi
 from os import curdir, sep
 
 
-server = "mqtt.nesad.fit.vutbr.cz" #"192.168.2.1"    # FILL IN YOUR CREDENTIALS
-port = 1883
-mqtt_username = "nesAtFit" #""
-mqtt_password = "kolize311"
-
-'''
-server = "localhost" #"192.168.2.1"    # FILL IN YOUR CREDENTIALS
-port = 1883
-mqtt_username = "" #""
-mqtt_password = ""
-'''
+server = os.environ.get('mqtt_host'), #"192.168.2.1"    # FILL IN YOUR CREDENTIALS
+port = os.environ.get('mqtt_port')
+mqtt_username = os.environ.get('mqtt_username') #""
+mqtt_password = "os.environ.get('mqtt_password')"
 
 mydb = mysql.connector.connect(
-  host="gm.sgve.eu",
-  user="sgve",
-  passwd="ifilius2521",
-  database="pds"
+  host=os.environ.get('mysql_host'),
+  user="root",
+  passwd="",
+  database="coffeeesp"
 )
 
 #HTTP PORT for API
