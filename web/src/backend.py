@@ -26,15 +26,39 @@ port = environ.get('mqtt_port')
 mqtt_username = environ.get('mqtt_username') #""
 mqtt_password = environ.get('mqtt_password')
 
-mydb = mysql.connector.connect(
-  host=environ.get('mysql_host'),
-  user="root",
-  passwd="",
-  database="coffeeesp"
-)
+mysql_database = "coffeeesp"
 
-global mycursor
-mycursor = mydb.cursor()
+try:
+    mydb = mysql.connector.connect(
+        host=environ.get('mysql_host'),
+        user="root",
+        passwd="",
+        database=mysql_database
+    )
+except mysql.connector.Error as err:
+    if err.errno == mysql.connector.errorcode.ER_BAD_DB_ERROR:
+        print("Database does not exists, going to create one")
+        mydb = mysql.connector.connect(
+            host=environ.get('mysql_host'),
+            user="root",
+            passwd="",
+            database=mysql_database
+        )
+        mycursor = mydb.cursor(buffered=True)
+        sql_create_DB = "CREATE DATABASE IF NOT EXISTS "+mysql_database+" /*!40100 DEFAULT CHARACTER SET utf8 */;" + " USE "+mysql_database+";"
+        with open('pds_db.sql', 'r') as myfile:
+            sql2 = myfile.read()
+        sql_create_DB+=sql2
+        for sql in sql_create_DB.split(";"):
+            if not sql.isspace():
+                print(sql)
+                mycursor.execute(sql)
+    else:
+        print("ERROR: Connect failed: " + str(err))
+        raise err 
+
+
+mycursor = mydb.cursor(buffered=True)
 
 def mysql_query(sql):
     mycursor.execute(sql)
