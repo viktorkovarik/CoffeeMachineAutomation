@@ -41,7 +41,7 @@ except mysql.connector.Error as err:
         mydb = mysql.connector.connect(
             host=environ.get('mysql_host'),
             user="root",
-            passwd="",
+            passwd=""
         )
         mycursor = mydb.cursor(buffered=True)
         sql_create_DB = "CREATE DATABASE IF NOT EXISTS "+mysql_database+" /*!40100 DEFAULT CHARACTER SET utf8 */;" + " USE "+mysql_database+";"
