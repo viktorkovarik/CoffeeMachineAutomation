@@ -38,6 +38,8 @@ function downloadData() {
 								<th>username</th>\
 								<th>cardID</th>\
 								<th>count</th>\
+								<th>grams</th>\
+								<th>price</th>\
 							</tr>';
 					console.log(pom);
 				for ( var i in pole ) {
@@ -56,7 +58,8 @@ function downloadData() {
 						pom += '<td>'+pole[i][0]+'</td>';
 						pom += '<td>'+pole[i][1]+'</td>';
 						pom += '<td>'+pole[i][2]+'</td>';
-						
+						pom += '<td>'+pole[i][3]+'</td>';
+						pom += '<td>'+pole[i][4]+'</td>';
 						pom += '</tr>';
 
 						//document.getElementById("dataArea").innerHTML += " DeviceID: " + pole[i].deviceID + " SensorID: " + pole[i].sensorID + " " + pole[i].sensorType + ":"+ "&emsp;&emsp;" +  pole[i].value + jednotka +" </br>";

@@ -57,6 +57,14 @@ CREATE TABLE IF NOT EXISTS `user_list` (
   UNIQUE KEY `cardID` (`cardID`)
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8;
 
+-- Dumping structure for table coffeeesp.config
+CREATE TABLE IF NOT EXISTS `config` (
+  `id` bigint(20) unsigned NOT NULL DEFAULT '1',
+  `price` int(10) unsigned NOT NULL,
+  `grams` int(10) unsigned NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
 -- Dumping structure for table coffeeesp.last_refill
 CREATE TABLE IF NOT EXISTS `last_refill` (
   `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,

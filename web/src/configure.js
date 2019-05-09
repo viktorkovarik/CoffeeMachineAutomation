@@ -26,7 +26,7 @@ function downloadData() {
 	//// put your code here
 	try {
 		var xmlHttp = createXmlHttpRequestObject();
-		xmlHttp.open("GET", "?api=orders", true);
+		xmlHttp.open("GET", "?api=configure", true);
 		xmlHttp.onreadystatechange = function() {
 			if ((xmlHttp.readyState==4) && (xmlHttp.status==200)) { //process is completed and http status is OK
 				//alert(xmlHttp.responseText);
@@ -35,11 +35,8 @@ function downloadData() {
 				document.getElementById("dataArea").innerHTML = "";
 				var pom = "<table>"
 				pom +='<tr>\
-								<th>username</th>\
-								<th>cardID</th>\
-								<th>count</th>\
-								<th>grams</th>\
-								<th>price</th>\
+								<th>price per coffee</th>\
+								<th>grams per coffee</th>\
 							</tr>';
 					console.log(pom);
 				for ( var i in pole ) {
@@ -55,11 +52,8 @@ function downloadData() {
 						var rok = datum.getFullYear();
 						var hodiny = datum.getHours();
 						var minuty = datum.getMinutes();*/
-						pom += '<td>'+pole[i][0]+'</td>';
 						pom += '<td>'+pole[i][1]+'</td>';
 						pom += '<td>'+pole[i][2]+'</td>';
-						pom += '<td>'+pole[i][3]+'</td>';
-						pom += '<td>'+pole[i][4]+'</td>';
 						
 						pom += '</tr>';
 
@@ -77,6 +71,36 @@ function downloadData() {
 				}
 				pom +='	</table>';
 				document.getElementById("dataArea").innerHTML = pom;
+
+				var pom = ""
+				pom +='<form action="" method="post">\
+					';
+				//for ( var i in pole ) {
+					//console.log(pole[i]);
+					//pole[i].id
+					//if (pole[i].timestamp > pole_time_old) {
+						pom += "price" +'<input type=\"text\" name=\"price\" value=\"'+pole[0][1]+'\" required>'+'<br>';
+						pom += "price" +'<input type=\"text\" name=\"grams\" value=\"'+pole[0][2]+'\" required>'+'<br>';
+						//document.getElementById("dataArea").innerHTML += " DeviceID: " + pole[i].deviceID + " SensorID: " + pole[i].sensorID + " " + pole[i].sensorType + ":"+ "&emsp;&emsp;" +  pole[i].value + jednotka +" </br>";
+						//document.getElementById("dataArea").innerHTML += "Last data received on: " + pole[i].timestamp + " </br>";
+
+						//document.getElementById('dataArea').scrollTop = document.getElementById('dataArea').scrollHeight;
+						if ( pole_time_old != 0) {
+							pole_time_old = pole[i][2];
+						}
+						if ( pole_time_old == 0) {
+							pole_time_old = pole[i][2];
+						}
+					//}
+				//}
+				pom += '<input type="submit">';
+				pom += '</form>';
+				console.log(pom);
+				if (loaded == false && pole_time_old !=0) {
+					document.getElementById("dataArea2").innerHTML = pom;
+					loaded = true;
+				}
+
 			}
 		}
 		xmlHttp.send(null);	
@@ -87,5 +111,6 @@ function downloadData() {
 
 //// put your code here
 var pole_time_old = 0;
+var loaded = false;
 setInterval("downloadData()", 3000);
 downloadData();

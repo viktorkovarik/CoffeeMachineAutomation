@@ -41,8 +41,7 @@ except mysql.connector.Error as err:
         mydb = mysql.connector.connect(
             host=environ.get('mysql_host'),
             user="root",
-            passwd="",
-            database=mysql_database
+            passwd=""
         )
         mycursor = mydb.cursor(buffered=True)
         sql_create_DB = "CREATE DATABASE IF NOT EXISTS "+mysql_database+" /*!40100 DEFAULT CHARACTER SET utf8 */;" + " USE "+mysql_database+";"
@@ -83,14 +82,14 @@ def show_log():
     return mysql_query(sql)
 
 def show_order_history_all():
-    sql = """SELECT user_list.username, readcard.val, count(readcard.val) as `count` FROM readcard
+    sql = """SELECT user_list.username, readcard.val, count(readcard.val) as `count`, config.grams * count(readcard.val) as grams, config.price * count(readcard.val) as price FROM config,readcard
                 JOIN user_list WHERE readcard.val = user_list.cardid
                 GROUP BY user_list.username
             """
     return mysql_query(sql)
 
 def show_order_history_since_refill():
-    sql = """SELECT user_list.username, readcard.val, count(readcard.val) as `count` FROM last_refill, readcard
+    sql = """SELECT user_list.username, readcard.val, count(readcard.val) as `count`, config.grams * count(readcard.val) as grams, config.price * count(readcard.val) as price FROM config, last_refill, readcard
                 JOIN user_list WHERE readcard.val = user_list.cardid AND (readcard.`time` >  last_refill.`time`) AND last_refill.id=(SELECT MAX(id) FROM last_refill)
                 GROUP BY user_list.username
             """
@@ -119,6 +118,15 @@ def register(cardid, username):
 
 def refill():
     sql = "INSERT INTO last_refill(val) VALUES (1); "
+    mycursor.execute(sql)
+    mydb.commit()
+
+def show_config():
+    sql = "SELECT * FROM config"
+    return mysql_query(sql)
+
+def set_config(price, grams):
+    sql = "INSERT INTO config(id, price, grams) VALUES(1, "+str(price)+", "+str(grams)+") ON DUPLICATE KEY UPDATE price="+str(price)+", grams="+str(grams)+";"
     mycursor.execute(sql)
     mydb.commit()
 
@@ -307,6 +315,8 @@ class Server(BaseHTTPRequestHandler):
                 self.wfile.write(json.dumps(show_users()).encode())
             elif 'unregistered_users' in url:
                 self.wfile.write(json.dumps(show_unregistered_users()).encode())
+            elif 'configure' in url:
+                    self.wfile.write(json.dumps(show_config()).encode())
             else:
                 self.wfile.write(json.dumps({'error': 'unknown_parameter'}).encode())
         
@@ -341,6 +351,8 @@ class Server(BaseHTTPRequestHandler):
             refill()
         if 'cardid' in url.keys() and 'username' in url.keys():
             register(url['cardid'][0], url['username'][0])
+        if 'price' in url.keys() and 'grams' in url.keys():
+            set_config(url['price'][0], url['grams'][0])
 
 
         
