@@ -16,6 +16,8 @@ from os import environ
 import threading
 
 from http.server import BaseHTTPRequestHandler, HTTPServer
+import http.cookies
+
 import socketserver
 import cgi
 from os import curdir, sep
@@ -266,59 +268,72 @@ class Server(BaseHTTPRequestHandler):
     # GET sends back a Hello world message
     def do_GET(self):
         #print(self.path)
-        url = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query).get('api', None) # https://stackoverflow.com/questions/8928730/processing-http-get-input-parameter-on-server-side-in-python
-        if url == None:
-            if self.path=="/":
-                self.path="/index.html"
-            try:
-                #Check the file extension required and
-                #set the right mime type
+        
+        cookies = http.cookies.SimpleCookie(self.headers.get('Cookie'))
+        #print(cookies)
+        if 'coffee_user' in cookies.keys():
+            url = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query).get('api', None) # https://stackoverflow.com/questions/8928730/processing-http-get-input-parameter-on-server-side-in-python
+            if url == None:
+                if self.path=="/":
+                    self.path="/index.html"
+                try:
+                    #Check the file extension required and
+                    #set the right mime type
 
-                sendReply = False
-                if self.path.endswith(".html"):
-                    mimetype='text/html'
-                    sendReply = True
-                if self.path.endswith(".jpg"):
-                    mimetype='image/jpg'
-                    sendReply = True
-                if self.path.endswith(".gif"):
-                    mimetype='image/gif'
-                    sendReply = True
-                if self.path.endswith(".js"):
-                    mimetype='application/javascript'
-                    sendReply = True
-                if self.path.endswith(".css"):
-                    mimetype='text/css'
-                    sendReply = True
+                    sendReply = False
+                    if self.path.endswith(".html"):
+                        mimetype='text/html'
+                        sendReply = True
+                    if self.path.endswith(".jpg"):
+                        mimetype='image/jpg'
+                        sendReply = True
+                    if self.path.endswith(".gif"):
+                        mimetype='image/gif'
+                        sendReply = True
+                    if self.path.endswith(".js"):
+                        mimetype='application/javascript'
+                        sendReply = True
+                    if self.path.endswith(".css"):
+                        mimetype='text/css'
+                        sendReply = True
 
-                if sendReply == True:
-                    #Open the static file requested and send it
-                    f = open(curdir + sep + self.path, mode='rb') 
-                    self.send_response(200)
-                    self.send_header('Content-type',mimetype)
-                    self.end_headers()
-                    self.wfile.write(f.read())
-                    f.close()
-                return
+                    if sendReply == True:
+                        #Open the static file requested and send it
+                        f = open(curdir + sep + self.path, mode='rb') 
+                        self.send_response(200)
+                        self.send_header('Content-type',mimetype)
+                        self.end_headers()
+                        self.wfile.write(f.read())
+                        f.close()
+                    return
 
-            except IOError:
-                self.send_error(404,'File Not Found: %s' % self.path)
-        else:
-            self._set_headers()
-            if 'log' in url:
-                self.wfile.write(json.dumps(show_log()).encode())
-            elif 'orders' in url:
-                self.wfile.write(json.dumps(show_order_history_all()).encode())
-            elif 'orders_since_refill' in url:
-                self.wfile.write(json.dumps(show_order_history_since_refill()).encode())
-            elif 'users' in url:
-                self.wfile.write(json.dumps(show_users()).encode())
-            elif 'unregistered_users' in url:
-                self.wfile.write(json.dumps(show_unregistered_users()).encode())
-            elif 'configure' in url:
-                    self.wfile.write(json.dumps(show_config()).encode())
+                except IOError:
+                    self.send_error(404,'File Not Found: %s' % self.path)
+            
             else:
-                self.wfile.write(json.dumps({'error': 'unknown_parameter'}).encode())
+                self._set_headers()
+                if 'log' in url:
+                    self.wfile.write(json.dumps(show_log()).encode())
+                elif 'orders' in url:
+                    self.wfile.write(json.dumps(show_order_history_all()).encode())
+                elif 'orders_since_refill' in url:
+                    self.wfile.write(json.dumps(show_order_history_since_refill()).encode())
+                elif 'users' in url:
+                    self.wfile.write(json.dumps(show_users()).encode())
+                elif 'unregistered_users' in url:
+                    self.wfile.write(json.dumps(show_unregistered_users()).encode())
+                elif 'configure' in url:
+                        self.wfile.write(json.dumps(show_config()).encode())
+                else:
+                    self.wfile.write(json.dumps({'error': 'unknown_parameter'}).encode())
+        else:
+            mimetype='text/html'
+            self.send_response(200)
+            self.send_header('Content-type',mimetype)
+            self.end_headers()
+            html = """<form action="" method="post">Password: <input type="password" name="password" required><input type="submit"></form>"""
+            self.wfile.write(bytes(html, 'utf-8'))
+            
         
     # POST echoes the message adding a JSON field
     def do_POST(self):
@@ -341,11 +356,12 @@ class Server(BaseHTTPRequestHandler):
         # send the message back
         #self._set_headers()
         #self.wfile.write(json.dumps(message).encode())
-        self.send_response(301)
-        self.send_header("Refresh", 0)
-        self.end_headers()
-        
+    
         #print(url)
+        if not 'password' in url.keys():
+            self.send_response(301)
+            self.send_header("Refresh", 0)
+            self.end_headers()
 
         if 'refill' in url.keys():
             refill()
@@ -353,6 +369,17 @@ class Server(BaseHTTPRequestHandler):
             register(url['cardid'][0], url['username'][0])
         if 'price' in url.keys() and 'grams' in url.keys():
             set_config(url['price'][0], url['grams'][0])
+        if 'password' in url.keys():
+            if url['password'][0] == mqtt_password:
+                self.send_response(200)
+                self.send_header("Content-type", "text/html")
+                #print("password ok")
+                cookie = http.cookies.SimpleCookie()
+                cookie['coffee_user'] = True
+                self.send_header("Set-Cookie", cookie.output(header='', sep=''))
+                self.end_headers()
+                html = """<meta http-equiv="refresh" content="1">"""
+                self.wfile.write(bytes(html, 'utf-8'))
 
 
         
