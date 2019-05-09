@@ -21,7 +21,7 @@ import cgi
 from os import curdir, sep
 
 
-server = environ.get('mqtt_host'), #"192.168.2.1"    # FILL IN YOUR CREDENTIALS
+server = environ.get('mqtt_host') #"192.168.2.1"    # FILL IN YOUR CREDENTIALS
 port = environ.get('mqtt_port')
 mqtt_username = environ.get('mqtt_username') #""
 mqtt_password = environ.get('mqtt_password')
@@ -41,7 +41,8 @@ except mysql.connector.Error as err:
         mydb = mysql.connector.connect(
             host=environ.get('mysql_host'),
             user="root",
-            passwd=""
+            passwd="",
+            database=mysql_database
         )
         mycursor = mydb.cursor(buffered=True)
         sql_create_DB = "CREATE DATABASE IF NOT EXISTS "+mysql_database+" /*!40100 DEFAULT CHARACTER SET utf8 */;" + " USE "+mysql_database+";"
@@ -66,38 +67,60 @@ def mysql_query(sql):
     return match
 
 def show_log():
-    sql = """SELECT UNIX_TIMESTAMP(`time`) as `time_unix`, val FROM `action`
+    sql = """SELECT UNIX_TIMESTAMP(`time`) as `time_unix`, val, 'action' as `Event` FROM `action`
                 UNION
-                SELECT UNIX_TIMESTAMP(`time`) as `time_unix`, val FROM `consumption`
+                SELECT UNIX_TIMESTAMP(`time`) as `time_unix`, val, 'consumption' as `Event` FROM `consumption`
                 UNION
-                SELECT UNIX_TIMESTAMP(`time`) as `time_unix`, val FROM `emptywater`
+                SELECT UNIX_TIMESTAMP(`time`) as `time_unix`, val, 'emptywater' as `Event` FROM `emptywater`
                 UNION
-                SELECT UNIX_TIMESTAMP(`time`) as `time_unix`, val FROM `power_on`
+                SELECT UNIX_TIMESTAMP(`time`) as `time_unix`, val, 'power_on' as `Event` FROM `power_on`
                 UNION
-                SELECT UNIX_TIMESTAMP(`time`) as `time_unix`, val FROM `readcard`
+                SELECT UNIX_TIMESTAMP(`time`) as `time_unix`, val, 'readcard' as `Event` FROM `readcard`
                 UNION
-                SELECT UNIX_TIMESTAMP(`time`) as `time_unix`, val FROM `ready`
+                SELECT UNIX_TIMESTAMP(`time`) as `time_unix`, val, 'ready' as `Event` FROM `ready`
                 ORDER BY time_unix DESC;
             """
     return mysql_query(sql)
 
 def show_order_history_all():
-    sql = """SELECT count(readcard.val) as `count`, readcard.val, user_list.username FROM readcard
+    sql = """SELECT user_list.username, readcard.val, count(readcard.val) as `count` FROM readcard
                 JOIN user_list WHERE readcard.val = user_list.cardid
                 GROUP BY user_list.username
             """
     return mysql_query(sql)
 
-def show_order_history_last_30_days():
-    sql = """SELECT count(readcard.val) as `count`, readcard.val, user_list.username FROM readcard
-            JOIN user_list WHERE readcard.val = user_list.cardid and (readcard.`time` > DATE_SUB(now(), INTERVAL 30 DAY))
-            GROUP BY user_list.username
+def show_order_history_since_refill():
+    sql = """SELECT user_list.username, readcard.val, count(readcard.val) as `count` FROM last_refill, readcard
+                JOIN user_list WHERE readcard.val = user_list.cardid AND (readcard.`time` >  last_refill.`time`) AND last_refill.id=(SELECT MAX(id) FROM last_refill)
+                GROUP BY user_list.username
             """
     return mysql_query(sql)
 
 def show_users():
     sql = "SELECT * FROM user_list"
     return mysql_query(sql)
+
+def show_unregistered_users():
+    sql = "SET @cnt=0;"
+    mycursor.execute(sql)
+    sql = """SELECT (@cnt := @cnt + 1) AS id, r1.val as cardID, UNIX_TIMESTAMP(r1.`time`) as `time_unix`, COALESCE(u.username, 'unregistered') as username FROM readcard r1 LEFT JOIN user_list u ON r1.val = u.cardid
+                WHERE r1.`time` = (SELECT MAX(`time`) FROM readcard r2 WHERE r1.val = r2.val) 
+                ORDER BY r1.`time`;
+            """
+    return mysql_query(sql)
+
+def register(cardid, username):
+    sql="INSERT INTO user_list(cardid, username) VALUES("+str(cardid)+", \'"+str(username)+"\') ON DUPLICATE KEY UPDATE username='"+str(username)+"';"
+    if username == "delete":
+        sql="DELETE FROM user_list where cardid like \'%"+str(cardid)+"%\'"
+    #print(sql)
+    mycursor.execute(sql)
+    mydb.commit()
+
+def refill():
+    sql = "INSERT INTO last_refill(val) VALUES (1); "
+    mycursor.execute(sql)
+    mydb.commit()
 
 
 # topics which you want to subscribe
@@ -278,10 +301,12 @@ class Server(BaseHTTPRequestHandler):
                 self.wfile.write(json.dumps(show_log()).encode())
             elif 'orders' in url:
                 self.wfile.write(json.dumps(show_order_history_all()).encode())
-            elif 'orders_30days' in url:
-                self.wfile.write(json.dumps(show_order_history_last_30_days()).encode())
+            elif 'orders_since_refill' in url:
+                self.wfile.write(json.dumps(show_order_history_since_refill()).encode())
             elif 'users' in url:
                 self.wfile.write(json.dumps(show_users()).encode())
+            elif 'unregistered_users' in url:
+                self.wfile.write(json.dumps(show_unregistered_users()).encode())
             else:
                 self.wfile.write(json.dumps({'error': 'unknown_parameter'}).encode())
         
@@ -290,21 +315,34 @@ class Server(BaseHTTPRequestHandler):
         ctype, pdict = cgi.parse_header(self.headers.get('content-type'))
         
         # refuse to receive non-json content
-        if ctype != 'application/json':
+        '''if ctype != 'application/json':
             self.send_response(400)
             self.end_headers()
-            return
+            return'''
             
         # read the message and convert it into a python dictionary
         length = int(self.headers.get('content-length'))
-        message = json.loads(self.rfile.read(length))
-        
+        #message = json.loads(self.rfile.read(length))
+        data = self.rfile.read(length).decode()
+
+        url = urllib.parse.parse_qs(data)
         # add a property to the object, just to mess with data
-        message['received'] = 'ok'
-        
+        #message['received'] = 'ok'
         # send the message back
-        self._set_headers()
-        self.wfile.write(json.dumps(message).encode())
+        #self._set_headers()
+        #self.wfile.write(json.dumps(message).encode())
+        self.send_response(301)
+        self.send_header("Refresh", 0)
+        self.end_headers()
+        
+        #print(url)
+
+        if 'refill' in url.keys():
+            refill()
+        if 'cardid' in url.keys() and 'username' in url.keys():
+            register(url['cardid'][0], url['username'][0])
+
+
         
 def run(server_class=HTTPServer, handler_class=Server, port=8008):
     server_address = ('', port)

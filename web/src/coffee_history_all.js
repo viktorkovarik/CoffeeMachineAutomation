@@ -20,17 +20,13 @@
 	}
 }
 
-function addZeroBefore(n) {
-	return (n < 10 ? '0' : '') + n;
-  }
-
 function downloadData() {
 	document.getElementById("status").innerHTML = "downloadData()";
 	
 	//// put your code here
 	try {
 		var xmlHttp = createXmlHttpRequestObject();
-		xmlHttp.open("GET", "?api=log", true);
+		xmlHttp.open("GET", "?api=orders", true);
 		xmlHttp.onreadystatechange = function() {
 			if ((xmlHttp.readyState==4) && (xmlHttp.status==200)) { //process is completed and http status is OK
 				//alert(xmlHttp.responseText);
@@ -39,10 +35,9 @@ function downloadData() {
 				document.getElementById("dataArea").innerHTML = "";
 				var pom = "<table>"
 				pom +='<tr>\
-								<th>id</th>\
-								<th>Time</th>\
-								<th>value</th>\
-								<th>Event</th>\
+								<th>username</th>\
+								<th>cardID</th>\
+								<th>count</th>\
 							</tr>';
 					console.log(pom);
 				for ( var i in pole ) {
@@ -52,16 +47,16 @@ function downloadData() {
 						console.log(pole[i]);
 				
 						pom += '<tr>';
-						var datum = new Date(pole[i][0]*1000)
+						/*var datum = new Date(pole[i][0]*1000)
 						var den = datum.getDate();
 						var mesic = datum.getMonth();
 						var rok = datum.getFullYear();
-						var hodiny = addZeroBefore(datum.getHours());
-						var minuty = addZeroBefore(datum.getMinutes());
-						pom += '<td>'+i+'</td>';
-						pom += '<td>'+den+'. '+mesic+'. '+ rok + ' '+ hodiny + ':' + minuty + '</td>';
+						var hodiny = datum.getHours();
+						var minuty = datum.getMinutes();*/
+						pom += '<td>'+pole[i][0]+'</td>';
 						pom += '<td>'+pole[i][1]+'</td>';
 						pom += '<td>'+pole[i][2]+'</td>';
+						
 						pom += '</tr>';
 
 						//document.getElementById("dataArea").innerHTML += " DeviceID: " + pole[i].deviceID + " SensorID: " + pole[i].sensorID + " " + pole[i].sensorType + ":"+ "&emsp;&emsp;" +  pole[i].value + jednotka +" </br>";

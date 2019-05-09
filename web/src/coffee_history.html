@@ -12,9 +12,15 @@
   <body>
     <main>
       <div class="innertube">
-        <h1> Coffee history - AKA who had the most coffees since last DB wipe</h1>
+        <h1>Coffee history - AKA who had the most coffees since last refill</h1>
+        <h3>Use the button bellow when you refill to reset these values</h3>
 
         <div id="dataArea"></div> 
+
+        <form action="" method="post">
+          <input type="hidden" value="refill" id="action" name="action">
+          <input type="submit" value="Submit" >
+        </form>
 
         <div id="status" style="border: solid #aaa 1px; visibility: hidden;">&nbsp;</div> 
 
@@ -28,10 +34,12 @@
         <ul>
             <li><a href="index.html">Home</a></li>
             <li><a href="event_history.html">Event history</a></li>
-            <li><a href="coffee_history.html">Coffee history</a></li>
+            <li><a href="coffee_history.html">Coffee history since refill</a></li>
+            <li><a href="coffee_history_all.html">Whole coffee history</a></li>
             <li><a href="show_users.html">User list</a></li>
+            <li><a href="register_user.html">Register user</a></li>
         </ul>
       </div>
-  </nav>
+    </nav>
   </body>
 </html>

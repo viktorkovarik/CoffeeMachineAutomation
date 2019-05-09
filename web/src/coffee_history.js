@@ -26,7 +26,7 @@ function downloadData() {
 	//// put your code here
 	try {
 		var xmlHttp = createXmlHttpRequestObject();
-		xmlHttp.open("GET", "?api=orders", true);
+		xmlHttp.open("GET", "?api=orders_since_refill", true);
 		xmlHttp.onreadystatechange = function() {
 			if ((xmlHttp.readyState==4) && (xmlHttp.status==200)) { //process is completed and http status is OK
 				//alert(xmlHttp.responseText);
@@ -35,9 +35,9 @@ function downloadData() {
 				document.getElementById("dataArea").innerHTML = "";
 				var pom = "<table>"
 				pom +='<tr>\
-								<th>count</th>\
-								<th>cardID</th>\
 								<th>username</th>\
+								<th>cardID</th>\
+								<th>count</th>\
 							</tr>';
 					console.log(pom);
 				for ( var i in pole ) {

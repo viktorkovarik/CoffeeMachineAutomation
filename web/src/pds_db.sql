@@ -47,13 +47,14 @@ CREATE TABLE IF NOT EXISTS `ready` (
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8;
 
--- Dumping structure for table pds.user_list
+-- Dumping structure for table coffeeesp.user_list
 CREATE TABLE IF NOT EXISTS `user_list` (
   `id` bigint(20) NOT NULL AUTO_INCREMENT,
   `cardID` int(10) unsigned NOT NULL DEFAULT '0',
   `username` varchar(50) DEFAULT NULL,
   `enabled` tinyint(1) unsigned DEFAULT '1',
-  PRIMARY KEY (`id`)
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `cardID` (`cardID`)
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8;
 
 -- Dumping structure for table coffeeesp.last_refill
