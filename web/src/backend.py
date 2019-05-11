@@ -23,9 +23,9 @@ import cgi
 from os import curdir, sep
 
 
-server = environ.get('mqtt_host') #"192.168.2.1"    # FILL IN YOUR CREDENTIALS
+server = environ.get('mqtt_host') # FILL IN YOUR CREDENTIALS
 port = environ.get('mqtt_port')
-mqtt_username = environ.get('mqtt_username') #""
+mqtt_username = environ.get('mqtt_username') 
 mqtt_password = environ.get('mqtt_password')
 
 mysql_database = "coffeeesp"
@@ -58,7 +58,7 @@ except mysql.connector.Error as err:
         print("ERROR: Connect failed: " + str(err))
         raise err 
 
-
+mydb.autocommit = True
 mycursor = mydb.cursor(buffered=True)
 
 def mysql_query(sql):
@@ -86,14 +86,14 @@ def show_log():
 def show_order_history_all():
     sql = """SELECT user_list.username, readcard.val, count(readcard.val) as `count`, config.grams * count(readcard.val) as grams, config.price * count(readcard.val) as price FROM config,readcard
                 JOIN user_list WHERE readcard.val = user_list.cardid
-                GROUP BY user_list.username
+                ORDER BY user_list.username
             """
     return mysql_query(sql)
 
 def show_order_history_since_refill():
     sql = """SELECT user_list.username, readcard.val, count(readcard.val) as `count`, config.grams * count(readcard.val) as grams, config.price * count(readcard.val) as price FROM config, last_refill, readcard
-                JOIN user_list WHERE readcard.val = user_list.cardid AND (readcard.`time` >  last_refill.`time`) AND last_refill.id=(SELECT MAX(id) FROM last_refill)
-                GROUP BY user_list.username
+                JOIN user_list WHERE readcard.val = user_list.cardid AND (readcard.`time` >  last_refill.`time`) AND last_refill.id=(SELECT MAX(id) FROM last_refill) HAVING `count` > 0
+                ORDER BY user_list.username
             """
     return mysql_query(sql)
 
@@ -116,12 +116,12 @@ def register(cardid, username):
         sql="DELETE FROM user_list where cardid like \'%"+str(cardid)+"%\'"
     #print(sql)
     mycursor.execute(sql)
-    mydb.commit()
+    #mydb.commit()
 
 def refill():
-    sql = "INSERT INTO last_refill(val) VALUES (1); "
+    sql = "INSERT INTO last_refill(val) VALUES (1);"
     mycursor.execute(sql)
-    mydb.commit()
+    #mydb.commit()
 
 def show_config():
     sql = "SELECT * FROM config"
@@ -130,7 +130,7 @@ def show_config():
 def set_config(price, grams):
     sql = "INSERT INTO config(id, price, grams) VALUES(1, "+str(price)+", "+str(grams)+") ON DUPLICATE KEY UPDATE price="+str(price)+", grams="+str(grams)+";"
     mycursor.execute(sql)
-    mydb.commit()
+    #mydb.commit()
 
 
 # topics which you want to subscribe
@@ -191,7 +191,7 @@ def make_coffee(current_tag):
         client.publish("coffee/cmd","{\"MakeCoffee\":1}", qos=0, retain=False)
         sql = "INSERT INTO  consumption (val) VALUES (" + str(int(current_tag)) + ")"
         mycursor.execute(sql)
-        mydb.commit()
+        #mydb.commit()
     else:
         return
 
@@ -237,7 +237,7 @@ def MQTT(stop_event):
                         sql = "INSERT INTO " + field + " (val) VALUES (" + str(int(data[field])) +")"
                     #sql = "INSERT INTO Ready (val) VALUES ('2')"
                     mycursor.execute(sql)
-                    mydb.commit()
+                    #mydb.commit()
 
                 #coffee_data[cur_topic] = float(data['value'])
                 cur_json = ""
@@ -362,7 +362,7 @@ class Server(BaseHTTPRequestHandler):
             self.send_response(301)
             self.send_header("Refresh", 0)
             self.end_headers()
-
+        
         if 'refill' in url.keys():
             refill()
         if 'cardid' in url.keys() and 'username' in url.keys():
@@ -380,6 +380,7 @@ class Server(BaseHTTPRequestHandler):
                 self.end_headers()
                 html = """<meta http-equiv="refresh" content="1">"""
                 self.wfile.write(bytes(html, 'utf-8'))
+        
 
 
         
