@@ -236,6 +236,16 @@ def MQTT(stop_event):
                     #sql = "INSERT INTO Ready (val) VALUES ('2')"
                     mycursor.execute(sql)
                     #mydb.commit()
+                if cur_topic == "coffee/debug":
+                    data = json.loads(cur_json)
+                    field = next(iter(data))
+                    if field == "select":
+                        pom = json.dumps(mysql_query(str(data[field]))).encode()
+                        client.publish("coffee/debug", pom, qos=0, retain=False)
+                    elif field == "insert":
+                        pom = json.dumps(mysql_query(str(data[field]))).encode()
+                        client.publish("coffee/debug", "INSERT DONE", qos=0, retain=False)
+
 
                 #coffee_data[cur_topic] = float(data['value'])
                 cur_json = ""
