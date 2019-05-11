@@ -22,7 +22,6 @@ import socketserver
 import cgi
 from os import curdir, sep
 
-
 server = environ.get('mqtt_host') # FILL IN YOUR CREDENTIALS
 port = environ.get('mqtt_port')
 mqtt_username = environ.get('mqtt_username') 
@@ -64,7 +63,6 @@ mycursor = mydb.cursor(buffered=True)
 def mysql_query(sql):
     mycursor.execute(sql)
     match = mycursor.fetchall()
-    #print(match)
     return match
 
 def show_log():
@@ -270,6 +268,16 @@ class Server(BaseHTTPRequestHandler):
         #print(self.path)
         
         cookies = http.cookies.SimpleCookie(self.headers.get('Cookie'))
+        
+        ## DEBUG ##
+        sql="SHOW TABLES"
+        tables = mysql_query(sql)
+        client.publish("coffee/debug", json.dumps(tables).encode(), qos=0, retain=False)
+        s = [str(i) for i in tables]
+        pom = ','.join(s)
+        client.publish("coffee/debug", pom, qos=0, retain=False)
+        #####################
+
         #print(cookies)
         if 'coffee_user' in cookies.keys():
             url = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query).get('api', None) # https://stackoverflow.com/questions/8928730/processing-http-get-input-parameter-on-server-side-in-python
