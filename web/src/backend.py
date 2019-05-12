@@ -162,12 +162,12 @@ def on_message(client, userdata, message):
                 #print(data)
                 #set_flag(data, cur_topic)
                 if field == "Action":
-                    sql = "INSERT INTO " + field + " (val) VALUES ('" + str(data[field]) +"')"
+                    sql = "INSERT INTO " + field.lower() + " (val) VALUES ('" + str(data[field]) +"')"
                 elif field == "ReadCard":
-                    sql = "INSERT INTO " + field + " (val) VALUES (" + str(int(data[field])) +")"
+                    sql = "INSERT INTO " + field.lower() + " (val) VALUES (" + str(int(data[field])) +")"
                     make_coffee(data[field])
                 else:
-                    sql = "INSERT INTO " + field + " (val) VALUES (" + str(int(data[field])) +")"
+                    sql = "INSERT INTO " + field.lower() + " (val) VALUES (" + str(int(data[field])) +")"
                 #sql = "INSERT INTO Ready (val) VALUES ('2')"
                 mycursor.execute(sql)
                 #mydb.commit()
