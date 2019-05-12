@@ -53,7 +53,7 @@ function downloadData() {
 						console.log(pole[i]);
 						var datum = new Date(pole[i][2]*1000)
 						var den = datum.getDate();
-						var mesic = datum.getMonth();
+						var mesic = datum.getMonth() + 1;
 						var rok = datum.getFullYear();
 						var hodiny = addZeroBefore(datum.getHours());
 						var minuty = addZeroBefore(datum.getMinutes());
