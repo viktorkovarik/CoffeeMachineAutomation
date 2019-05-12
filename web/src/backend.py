@@ -148,13 +148,56 @@ def on_message(client, userdata, message):
         global cur_json
         cur_topic = message.topic
         cur_json = message.payload.decode('utf-8')
-        #print("message received " , cur_json)
-        #print("message topic=",cur_topic)
-        #print("message qos=",message.qos)
-        #print("message retain flag=",message.retain)
-    except UnicodeDecodeError:
-        cur_topic = ""
+        if cur_json and cur_topic:
+            #client.publish("coffee/debug", cur_json, qos=0, retain=False)
+            #print("message received " , cur_json)
+            #print("message topic=",cur_topic)
+            #print("message qos=",message.qos)
+            #print("message retain flag=",message.retain)
+            if cur_topic == "coffee/stat":
+
+                data = json.loads(cur_json)
+                field = next(iter(data))
+                #print(field)
+                #print(data)
+                #set_flag(data, cur_topic)
+                if field == "Action":
+                    sql = "INSERT INTO " + field + " (val) VALUES ('" + str(data[field]) +"')"
+                elif field == "ReadCard":
+                    sql = "INSERT INTO " + field + " (val) VALUES (" + str(int(data[field])) +")"
+                    make_coffee(data[field])
+                else:
+                    sql = "INSERT INTO " + field + " (val) VALUES (" + str(int(data[field])) +")"
+                #sql = "INSERT INTO Ready (val) VALUES ('2')"
+                mycursor.execute(sql)
+                #mydb.commit()
+            if cur_topic == "coffee/debug":
+                data = json.loads(cur_json)
+                field = next(iter(data))
+                if field == "select":
+                    pom = json.dumps(mysql_query(str(data[field]))).encode()
+                    client.publish("coffee/debug", pom, qos=0, retain=False)
+                elif field == "insert":
+                    sql = str(data[field])
+                    mycursor.execute(sql)
+                    client.publish("coffee/debug", "DONE", qos=0, retain=False)
+                elif field == "stop":
+                    client.publish("coffee/debug", "STOPPING", qos=0, retain=False)
+                    client.disconnect()
+
+            #coffee_data[cur_topic] = float(data['value'])
+            cur_json = ""
+            cur_topic = ""
+
+        #print(data)
+
+    # What happends when you receive corrupted MQTT Message
+    except ValueError:
         cur_json = ""
+        cur_topic = ""
+    '''except UnicodeDecodeError:
+        cur_topic = ""
+        cur_json = "" '''
 
 def machine_ready():
     ready = True 
@@ -208,57 +251,19 @@ def MQTT(stop_event):
     # subscribe to all topics at once
     client.subscribe(mqtt_topics)
 
+    '''
     data = dict()
 
     global cur_topic
     global cur_json
     cur_topic = ""
     cur_json = ""
-    while not stop_event.wait(1):
-        try:
-            client.loop()
-            # filling state class with data
-            if cur_json and cur_topic:
-                #print(str(state.last_luminosities))
-                if cur_topic == "coffee/stat":
-                    data = json.loads(cur_json)
-                    field = next(iter(data))
-                    #print(field)
-                    #print(data)
-                    #set_flag(data, cur_topic)
-                    if field == "Action":
-                        sql = "INSERT INTO " + field + " (val) VALUES ('" + str(data[field]) +"')"
-                    elif field == "ReadCard":
-                        sql = "INSERT INTO " + field + " (val) VALUES (" + str(int(data[field])) +")"
-                        make_coffee(data[field])
-                    else:
-                        sql = "INSERT INTO " + field + " (val) VALUES (" + str(int(data[field])) +")"
-                    #sql = "INSERT INTO Ready (val) VALUES ('2')"
-                    mycursor.execute(sql)
-                    #mydb.commit()
-                if cur_topic == "coffee/debug":
-                    data = json.loads(cur_json)
-                    field = next(iter(data))
-                    if field == "select":
-                        pom = json.dumps(mysql_query(str(data[field]))).encode()
-                        client.publish("coffee/debug", pom, qos=0, retain=False)
-                    elif field == "insert":
-                        pom = json.dumps(mysql_query(str(data[field]))).encode()
-                        client.publish("coffee/debug", "INSERT DONE", qos=0, retain=False)
-
-
-                #coffee_data[cur_topic] = float(data['value'])
-                cur_json = ""
-                cur_topic = ""
-
-            #print(data)
-
-        # What happends when you receive corrupted MQTT Message
-        except ValueError:
-            continue        
+    '''
+    client.loop_forever()
+                
     # If we try to exit program by keyboard interrupt (CTRL+C) then we need to disconnect from MQTT first.
     print("Exiting automation client and stopping MQTT subscriptions and disconnecting from DB")
-    client.loop_stop()
+    #client.loop_stop()
     mydb.close()
     sys.exit()
             
@@ -279,14 +284,16 @@ class Server(BaseHTTPRequestHandler):
         
         cookies = http.cookies.SimpleCookie(self.headers.get('Cookie'))
         
+        '''
         ## DEBUG ##
-        sql="SHOW TABLES"
+        sql="SHOW TABLES;"
         tables = mysql_query(sql)
         client.publish("coffee/debug", json.dumps(tables).encode(), qos=0, retain=False)
         s = [str(i) for i in tables]
         pom = ','.join(s)
         client.publish("coffee/debug", pom, qos=0, retain=False)
         #####################
+        '''
 
         #print(cookies)
         if 'coffee_user' in cookies.keys():
@@ -411,6 +418,7 @@ def run(server_class=HTTPServer, handler_class=Server, port=80):
         httpd.serve_forever()
     except KeyboardInterrupt:
         print('\nKeyboard interrupt received: EXITING')
+        client.publish("coffee/debug","{\"stop\":true}", qos=0, retain=False)
         pill2kill.set()
         th.join()
     finally:
