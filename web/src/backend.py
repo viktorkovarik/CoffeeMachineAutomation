@@ -321,7 +321,10 @@ class Server(BaseHTTPRequestHandler):
                     if self.path.endswith(".css"):
                         mimetype='text/css'
                         sendReply = True
-
+                    if self.path.endswith(".txt"):
+                        mimetype='text/plain'
+                        sendReply = True
+                    
                     if sendReply == True:
                         #Open the static file requested and send it
                         f = open(curdir + sep + self.path, mode='rb') 
