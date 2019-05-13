@@ -64,6 +64,7 @@ CREATE TABLE IF NOT EXISTS `config` (
   `grams` int(10) unsigned NOT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+INSERT INTO config(price, grams) VALUES (1, 1); 
 
 -- Dumping structure for table coffeeesp.last_refill
 CREATE TABLE IF NOT EXISTS `last_refill` (

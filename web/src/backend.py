@@ -203,17 +203,17 @@ def machine_ready():
     ready = True 
     emptywater = False
     power_on = True
-    sql = "SELECT * FROM ready WHERE val='1' ORDER BY id DESC LIMIT 1" # is ready
+    sql = "SELECT * FROM ready WHERE val=1 ORDER BY id DESC LIMIT 1" # is ready
     mycursor.execute(sql)
     match = mycursor.fetchone()
     if match == None:
         ready = False
-    sql = "SELECT * FROM emptywater WHERE val='0' ORDER BY id DESC LIMIT 1" # is not empty
+    sql = "SELECT * FROM emptywater WHERE val=0 ORDER BY id DESC LIMIT 1" # is not empty
     mycursor.execute(sql)
     match = mycursor.fetchone()
     if match == None: 
         emptywater = True
-    sql = "SELECT * FROM power_on WHERE val='1' ORDER BY id DESC LIMIT 1" # machine is on
+    sql = "SELECT * FROM power_on WHERE val=1 ORDER BY id DESC LIMIT 1" # machine is on
     mycursor.execute(sql)
     match = mycursor.fetchone()
     if match == None:
@@ -222,7 +222,7 @@ def machine_ready():
 
 
 def make_coffee(current_tag):
-    sql = "SELECT * FROM user_list WHERE cardID=\'"+str(current_tag)+"\' AND enabled=1"
+    sql = "SELECT * FROM user_list WHERE cardID="+str(current_tag)+" AND enabled=1"
     mycursor.execute(sql)
     match = mycursor.fetchone()
     #print (match)
