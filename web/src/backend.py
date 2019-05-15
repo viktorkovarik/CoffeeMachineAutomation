@@ -112,7 +112,8 @@ class DB:
             else:
                 cursor.execute(sql, sql_tuple)
         except mysql.connector.ProgrammingError:
-            self.create_db()
+            #self.create_db()
+            pass
         except mysql.connector.Error:
             self.connect()
             if sql_tuple is None:
