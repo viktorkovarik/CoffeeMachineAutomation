@@ -1,7 +1,7 @@
 #!/usr/bin/python
 #
 # PDS - projekt
-# Viktor Kovařík, xkovar77
+# Viktor Kovarik, xkovar77
 #
 import sys
 import paho.mqtt.client as mqtt
@@ -145,15 +145,15 @@ class DB:
                 print(sql)
                 self.query(sql)
 
-server = environ.get('mqtt_host') # FILL IN YOUR CREDENTIALS
+server = "192.168.1.11"#environ.get('mqtt_host') # FILL IN YOUR CREDENTIALS
 port = environ.get('mqtt_port')
 mqtt_username = environ.get('mqtt_username') 
 mqtt_password = environ.get('mqtt_password')
 
-mysql_host = environ.get('mysql_host')
+mysql_host = "192.168.1.150"#environ.get('mysql_host')
 mysql_port = 3306
-mysql_user = "root"
-mysql_password = ""
+mysql_user = "sgve"
+mysql_password = "ifilius2521"
 mysql_database = "coffeeesp"
 
 wait_for_database(mysql_host, mysql_port, mysql_database, mysql_user, mysql_password, 10)
