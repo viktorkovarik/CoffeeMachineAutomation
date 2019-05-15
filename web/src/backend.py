@@ -63,7 +63,7 @@ def wait_for_database(host, port, db, user, password, checking_interval_seconds)
             database_not_ready_yet(err, checking_interval_seconds)
         finally:
             if db_connection is not None: #and db_connection:
-                db_connection.get_connection().close()
+                db_connection.close()
 
 class DB:
     conn = None
