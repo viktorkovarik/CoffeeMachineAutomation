@@ -53,14 +53,7 @@ class DB:
             sql = "SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = \'"+self.db_name+"\';"
             db_exist = self.mysql_query(sql)
             if not db_exist:
-                sql_create_DB = "CREATE DATABASE IF NOT EXISTS "+self.db_name+" /*!40100 DEFAULT CHARACTER SET utf8 */;" + " USE "+self.db_name+";"
-                with open('pds_db.sql', 'r') as myfile:
-                    sql2 = myfile.read()
-                sql_create_DB+=sql2
-                for sql in sql_create_DB.split(";"):
-                    if not sql.isspace():
-                        print(sql)
-                        self.query(sql)
+                self.create_db()
             else:
                 sql = "USE "+self.db_name+";"
                 self.query(sql)
@@ -75,6 +68,8 @@ class DB:
                 cursor.execute(sql)
             else:
                 cursor.execute(sql, sql_tuple)
+        except mysql.connector.ProgrammingError:
+            self.create_db()
         except mysql.connector.Error:
             self.connect()
             if sql_tuple is None:
@@ -91,6 +86,15 @@ class DB:
         match = cursor.fetchall()
         return match
 
+    def create_db(self):
+        sql_create_DB = "CREATE DATABASE IF NOT EXISTS "+self.db_name+" /*!40100 DEFAULT CHARACTER SET utf8 */;" + " USE "+self.db_name+";"
+        with open('pds_db.sql', 'r') as myfile:
+            sql2 = myfile.read()
+        sql_create_DB+=sql2
+        for sql in sql_create_DB.split(";"):
+            if not sql.isspace():
+                print(sql)
+                self.query(sql)
 
 server = environ.get('mqtt_host') # FILL IN YOUR CREDENTIALS
 port = environ.get('mqtt_port')
