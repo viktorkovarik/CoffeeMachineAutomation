@@ -45,15 +45,13 @@ def wait_for_database(host, port, db, user, password, checking_interval_seconds)
     while not database_ready:
         db_connection = None
         try:
-            db_connection = DB(ip=host,
-                                port=port,
-                                user=user,
-                                pw=password,
-                                db_name=db
-                                )
-            db_connection.connect()
+            db_connection = mysql.connector.connect(
+                host=host,
+                user=user,
+                passwd=password
+            )
             print('Database connection made.')
-            db_connection.get_connection().ping()
+            db_connection.ping()
             print('Database ping successful.')
             database_ready = True
             print('The database is ready for handling incoming connections.')
@@ -64,7 +62,7 @@ def wait_for_database(host, port, db, user, password, checking_interval_seconds)
         except Exception as err:
             database_not_ready_yet(err, checking_interval_seconds)
         finally:
-            if db_connection is not None and db_connection.get_connection():
+            if db_connection is not None: #and db_connection:
                 db_connection.get_connection().close()
 
 class DB:
@@ -150,10 +148,10 @@ port = environ.get('mqtt_port')
 mqtt_username = environ.get('mqtt_username') 
 mqtt_password = environ.get('mqtt_password')
 
-mysql_host = "192.168.1.150"#environ.get('mysql_host')
+mysql_host = environ.get('mysql_host')
 mysql_port = 3306
-mysql_user = "sgve"
-mysql_password = "ifilius2521"
+mysql_user = "root"
+mysql_password = ""
 mysql_database = "coffeeesp"
 
 wait_for_database(mysql_host, mysql_port, mysql_database, mysql_user, mysql_password, 10)
