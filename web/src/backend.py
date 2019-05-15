@@ -22,6 +22,49 @@ import socketserver
 import cgi
 from os import curdir, sep
 
+def database_not_ready_yet(error, checking_interval_seconds):
+    print('Database initialization has not yet finished. Retrying over {0} second(s). The encountered error was: {1}.'
+          .format(checking_interval_seconds,
+                  repr(error)))
+    time.sleep(checking_interval_seconds)
+
+
+def wait_for_database(host, port, db, user, password, checking_interval_seconds):
+    """
+    Wait until the database is ready to handle connections.
+
+    This is necessary to ensure that the application docker container
+    only starts working after the MySQL database container has finished initializing.
+
+    More info: https://docs.docker.com/compose/startup-order/ and https://docs.docker.com/compose/compose-file/#depends_on .
+    """
+    print('Waiting until the database is ready to handle connections....')
+    database_ready = False
+    while not database_ready:
+        db_connection = None
+        try:
+            db_connection = DB(ip=host,
+                                port=port,
+                                user=user,
+                                pw=password,
+                                db_name=db
+                                )
+            db_connection.connect()
+            print('Database connection made.')
+            db_connection.get_connection().ping()
+            print('Database ping successful.')
+            database_ready = True
+            print('The database is ready for handling incoming connections.')
+        except mysql.connector.OperationalError as err:
+            database_not_ready_yet(err, checking_interval_seconds)
+        except mysql.connector.DatabaseError as err:
+            database_not_ready_yet(err, checking_interval_seconds)
+        except Exception as err:
+            database_not_ready_yet(err, checking_interval_seconds)
+        finally:
+            if db_connection is not None and db_connection.get_connection():
+                db_connection.get_connection().close()
+
 class DB:
     conn = None
     cursor = None
@@ -81,6 +124,9 @@ class DB:
     def get_connection(self):
         return self.conn
     
+    def get_cursor(self):
+        return self.cursor
+    
     def mysql_query(self, sql):
         cursor = self.query(sql)
         match = cursor.fetchall()
@@ -101,13 +147,19 @@ port = environ.get('mqtt_port')
 mqtt_username = environ.get('mqtt_username') 
 mqtt_password = environ.get('mqtt_password')
 
-mysql_database = "coffeeesp2"
+mysql_host = environ.get('mysql_host')
+mysql_port = 3306
+mysql_user = "root"
+mysql_password = ""
+mysql_database = "coffeeesp"
+
+wait_for_database(mysql_host, mysql_port, mysql_database, mysql_user, mysql_password, 10)
 
 mydb = DB(
-    ip=environ.get('mysql_host'), 
-    port=3306,
-    user="root",
-    pw="",
+    ip=mysql_host, 
+    port=mysql_port,
+    user=mysql_user,
+    pw=mysql_password,
     db_name=mysql_database
 )
 mydb.connect()
