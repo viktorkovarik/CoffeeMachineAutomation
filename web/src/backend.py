@@ -22,48 +22,92 @@ import socketserver
 import cgi
 from os import curdir, sep
 
+class DB:
+    conn = None
+    cursor = None
+    ip = None # MySQL connection IP
+    port = None # MySQL connection port (e.g. 3306)
+    user = None # MySQL user account (e.g. root)
+    pw = None # MySQL user password
+    db_name = None # Database name in MySQL
+    charset = None # Character encoding (default: utf8)
+
+    def __init__(self, ip, port, user, pw, db_name, charset=None):
+        self.ip = ip
+        self.port = port
+        self.user = user
+        self.pw = pw
+        self.db_name = db_name
+        if charset is None:
+            self.charset = 'utf8'
+
+    def connect(self):
+        try:
+            self.conn = mysql.connector.connect(
+                host=self.ip,
+                user=self.user,
+                passwd=self.pw
+            )
+            self.conn.autocommit = True
+            self.cursor = self.conn.cursor(buffered=True)
+            sql = "SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = \'"+self.db_name+"\';"
+            db_exist = self.mysql_query(sql)
+            if not db_exist:
+                sql_create_DB = "CREATE DATABASE IF NOT EXISTS "+self.db_name+" /*!40100 DEFAULT CHARACTER SET utf8 */;" + " USE "+self.db_name+";"
+                with open('pds_db.sql', 'r') as myfile:
+                    sql2 = myfile.read()
+                sql_create_DB+=sql2
+                for sql in sql_create_DB.split(";"):
+                    if not sql.isspace():
+                        print(sql)
+                        self.query(sql)
+            else:
+                sql = "USE "+self.db_name+";"
+                self.query(sql)
+        except ConnectionRefusedError:
+            print("Couldn't connect")
+            self.cursor.reconnect(attempts=5, delay=30)
+
+    def query(self, sql, sql_tuple=None):
+        cursor = self.conn.cursor(buffered=True)
+        try:
+            if sql_tuple is None:
+                cursor.execute(sql)
+            else:
+                cursor.execute(sql, sql_tuple)
+        except mysql.connector.Error:
+            self.connect()
+            if sql_tuple is None:
+                cursor.execute(sql)
+            else:
+                cursor.execute(sql, sql_tuple)
+        return cursor
+
+    def get_connection(self):
+        return self.conn
+    
+    def mysql_query(self, sql):
+        cursor = self.query(sql)
+        match = cursor.fetchall()
+        return match
+
+
 server = environ.get('mqtt_host') # FILL IN YOUR CREDENTIALS
 port = environ.get('mqtt_port')
 mqtt_username = environ.get('mqtt_username') 
 mqtt_password = environ.get('mqtt_password')
 
-mysql_database = "coffeeesp"
+mysql_database = "coffeeesp2"
 
-try:
-    mydb = mysql.connector.connect(
-        host=environ.get('mysql_host'),
-        user="root",
-        passwd="",
-        database=mysql_database
-    )
-except mysql.connector.Error as err:
-    if err.errno == mysql.connector.errorcode.ER_BAD_DB_ERROR:
-        print("Database does not exists, going to create one")
-        mydb = mysql.connector.connect(
-            host=environ.get('mysql_host'),
-            user="root",
-            passwd=""
-        )
-        mycursor = mydb.cursor(buffered=True)
-        sql_create_DB = "CREATE DATABASE IF NOT EXISTS "+mysql_database+" /*!40100 DEFAULT CHARACTER SET utf8 */;" + " USE "+mysql_database+";"
-        with open('pds_db.sql', 'r') as myfile:
-            sql2 = myfile.read()
-        sql_create_DB+=sql2
-        for sql in sql_create_DB.split(";"):
-            if not sql.isspace():
-                print(sql)
-                mycursor.execute(sql)
-    else:
-        print("ERROR: Connect failed: " + str(err))
-        raise err 
+mydb = DB(
+    ip=environ.get('mysql_host'), 
+    port=3306,
+    user="root",
+    pw="",
+    db_name=mysql_database
+)
+mydb.connect()
 
-mydb.autocommit = True
-mycursor = mydb.cursor(buffered=True)
-
-def mysql_query(sql):
-    mycursor.execute(sql)
-    match = mycursor.fetchall()
-    return match
 
 def show_log():
     sql = """SELECT UNIX_TIMESTAMP(`time`) as `time_unix`, val, 'action' as `Event` FROM `action`
@@ -79,55 +123,55 @@ def show_log():
                 SELECT UNIX_TIMESTAMP(`time`) as `time_unix`, val, 'ready' as `Event` FROM `ready`
                 ORDER BY time_unix DESC;
             """
-    return mysql_query(sql)
+    return mydb.mysql_query(sql)
 
 def show_order_history_all():
     sql = """SELECT user_list.username, readcard.val, count(readcard.val) as `count`, config.grams * count(readcard.val) as grams, config.price * count(readcard.val) as price FROM config,readcard
                 JOIN user_list WHERE readcard.val = user_list.cardid
                 ORDER BY user_list.username
             """
-    return mysql_query(sql)
+    return mydb.mysql_query(sql)
 
 def show_order_history_since_refill():
     sql = """SELECT user_list.username, readcard.val, count(readcard.val) as `count`, config.grams * count(readcard.val) as grams, config.price * count(readcard.val) as price FROM config, last_refill, readcard
                 JOIN user_list WHERE readcard.val = user_list.cardid AND (readcard.`time` >  last_refill.`time`) AND last_refill.id=(SELECT MAX(id) FROM last_refill) HAVING `count` > 0
                 ORDER BY user_list.username
             """
-    return mysql_query(sql)
+    return mydb.mysql_query(sql)
 
 def show_users():
     sql = "SELECT * FROM user_list"
-    return mysql_query(sql)
+    return mydb.mysql_query(sql)
 
 def show_unregistered_users():
     sql = "SET @cnt=0;"
-    mycursor.execute(sql)
+    mydb.query(sql)
     sql = """SELECT (@cnt := @cnt + 1) AS id, r1.val as cardID, UNIX_TIMESTAMP(r1.`time`) as `time_unix`, COALESCE(u.username, 'unregistered') as username FROM readcard r1 LEFT JOIN user_list u ON r1.val = u.cardid
                 WHERE r1.`time` = (SELECT MAX(`time`) FROM readcard r2 WHERE r1.val = r2.val) 
                 ORDER BY r1.`time`;
             """
-    return mysql_query(sql)
+    return mydb.mysql_query(sql)
 
 def register(cardid, username):
     sql="INSERT INTO user_list(cardid, username) VALUES("+str(cardid)+", \'"+str(username)+"\') ON DUPLICATE KEY UPDATE username='"+str(username)+"';"
     if username == "delete":
         sql="DELETE FROM user_list where cardid like \'%"+str(cardid)+"%\'"
     #print(sql)
-    mycursor.execute(sql)
+    mydb.query(sql)
     #mydb.commit()
 
 def refill():
     sql = "INSERT INTO last_refill(val) VALUES (1);"
-    mycursor.execute(sql)
+    mydb.query(sql)
     #mydb.commit()
 
 def show_config():
     sql = "SELECT * FROM config"
-    return mysql_query(sql)
+    return mydb.mysql_query(sql)
 
 def set_config(price, grams):
     sql = "INSERT INTO config(id, price, grams) VALUES(1, "+str(price)+", "+str(grams)+") ON DUPLICATE KEY UPDATE price="+str(price)+", grams="+str(grams)+";"
-    mycursor.execute(sql)
+    mydb.query(sql)
     #mydb.commit()
 
 
@@ -169,17 +213,17 @@ def on_message(client, userdata, message):
                 else:
                     sql = "INSERT INTO " + field.lower() + " (val) VALUES (" + str(int(data[field])) +")"
                 #sql = "INSERT INTO Ready (val) VALUES ('2')"
-                mycursor.execute(sql)
+                mydb.query(sql)
                 #mydb.commit()
             if cur_topic == "coffee/debug":
                 data = json.loads(cur_json)
                 field = next(iter(data))
                 if field == "select":
-                    pom = json.dumps(mysql_query(str(data[field]))).encode()
+                    pom = json.dumps(mydb.mysql_query(str(data[field]))).encode()
                     client.publish("coffee/debug", pom, qos=0, retain=False)
                 elif field == "insert":
                     sql = str(data[field])
-                    mycursor.execute(sql)
+                    mydb.query(sql)
                     client.publish("coffee/debug", "DONE", qos=0, retain=False)
                 elif field == "stop":
                     client.publish("coffee/debug", "STOPPING", qos=0, retain=False)
@@ -204,17 +248,17 @@ def machine_ready():
     emptywater = False
     power_on = True
     sql = "SELECT * FROM ready WHERE val=1 ORDER BY id DESC LIMIT 1" # is ready
-    mycursor.execute(sql)
+    mycursor = mydb.query(sql)
     match = mycursor.fetchone()
     if match == None:
         ready = False
     sql = "SELECT * FROM emptywater WHERE val=0 ORDER BY id DESC LIMIT 1" # is not empty
-    mycursor.execute(sql)
+    mycursor = mydb.query(sql)
     match = mycursor.fetchone()
     if match == None: 
         emptywater = True
     sql = "SELECT * FROM power_on WHERE val=1 ORDER BY id DESC LIMIT 1" # machine is on
-    mycursor.execute(sql)
+    mycursor = mydb.query(sql)
     match = mycursor.fetchone()
     if match == None:
         power_on = False    
@@ -223,7 +267,7 @@ def machine_ready():
 
 def make_coffee(current_tag):
     sql = "SELECT * FROM user_list WHERE cardID="+str(current_tag)+" AND enabled=1"
-    mycursor.execute(sql)
+    mycursor = mydb.query(sql)
     match = mycursor.fetchone()
     #print (match)
     if match == None:
@@ -231,12 +275,12 @@ def make_coffee(current_tag):
     elif machine_ready():
         client.publish("coffee/cmd","{\"MakeCoffee\":1}", qos=0, retain=False)
         sql = "INSERT INTO  consumption (val) VALUES (" + str(int(current_tag)) + ")"
-        mycursor.execute(sql)
+        mydb.query(sql)
         #mydb.commit()
     else:
         return
 
-def MQTT(stop_event):
+def MQTT(stop_event, mydb):
     global client
     client = mqtt.Client("PDS-coffee-backend")
     client.username_pw_set(mqtt_username,mqtt_password)
@@ -264,7 +308,7 @@ def MQTT(stop_event):
     # If we try to exit program by keyboard interrupt (CTRL+C) then we need to disconnect from MQTT first.
     print("Exiting automation client and stopping MQTT subscriptions and disconnecting from DB")
     #client.loop_stop()
-    mydb.close()
+    mydb.get_connection().close()
     sys.exit()
             
 
@@ -287,7 +331,7 @@ class Server(BaseHTTPRequestHandler):
         '''
         ## DEBUG ##
         sql="SHOW TABLES;"
-        tables = mysql_query(sql)
+        tables = mydb.mysql_query(sql)
         client.publish("coffee/debug", json.dumps(tables).encode(), qos=0, retain=False)
         s = [str(i) for i in tables]
         pom = ','.join(s)
@@ -430,8 +474,9 @@ def run(server_class=HTTPServer, handler_class=Server, port=80):
 if __name__ == "__main__":
     from sys import argv
 
+
     pill2kill = threading.Event()
-    th = threading.Thread(target=MQTT, args=(pill2kill,))
+    th = threading.Thread(target=MQTT, args=(pill2kill,mydb,))
     th.start()
  
     if len(argv) == 2:
