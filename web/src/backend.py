@@ -154,7 +154,7 @@ mysql_user = "root"
 mysql_password = ""
 mysql_database = "coffeeesp"
 
-wait_for_database(mysql_host, mysql_port, mysql_database, mysql_user, mysql_password, 10)
+#wait_for_database(mysql_host, mysql_port, mysql_database, mysql_user, mysql_password, 10)
 
 mydb = DB(
     ip=mysql_host, 
