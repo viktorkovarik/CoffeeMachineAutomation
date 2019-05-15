@@ -13,6 +13,8 @@ import mysql.connector
 import urllib
 from os import environ
 
+from random import random
+
 import threading
 
 from http.server import BaseHTTPRequestHandler, HTTPServer
@@ -339,7 +341,7 @@ def make_coffee(current_tag):
 
 def MQTT(stop_event, mydb):
     global client
-    client = mqtt.Client("PDS-coffee-backend")
+    client = mqtt.Client("PDS-coffee-backend-" + str(round(random()*10)))
     client.username_pw_set(mqtt_username,mqtt_password)
     client.connect(server)
         
